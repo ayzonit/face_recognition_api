@@ -130,6 +130,5 @@ All services run in isolated Docker containers connected via a private network, 
 #### Prerequisites
 - Docker
 
-Author
-
+### Author
 Ayush Bhattacharjee
