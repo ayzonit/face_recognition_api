@@ -110,19 +110,19 @@ Containerized environment for all services.
 - Returns bounding box data per frame
 
 ### Design Decisions
-#### No OpenCV
+#### No OpenCV:
 
 Bounding boxes are drawn using Pillow instead of OpenCV, reducing dependency complexity while maintaining required functionality.
 
-#### Frame-Level Processing
+#### Frame-Level Processing:
 
 Each frame is processed independently, ensuring consistent ROI extraction and simplifying storage.
 
-#### Asynchronous Processing
+#### Asynchronous Processing:
 
 Video processing is handled in the background. The upload endpoint returns immediately with a job ID.
 
-#### Containerized Architecture
+#### Containerized Architecture:
 
 All services run in isolated Docker containers connected via a private network, ensuring reproducibility and clean separation of concerns.
 
