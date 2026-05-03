@@ -130,8 +130,6 @@ All services run in isolated Docker containers connected via a private network, 
 #### Prerequisites
 - Docker
 
-### <img width="1536" height="1024" alt="face_detection_image" src="https://github.com/user-attachments/assets/19b6c273-d586-4d63-a53d-9c0393b533ae" />
-<img width="1536" height="1024" alt="face_detection_image" src="https://github.com/user-attachments/assets/ff8143a5-de62-468b-9409-da084e0eb881" />
 Author
 
 Ayush Bhattacharjee
