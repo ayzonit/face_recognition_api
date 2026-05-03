@@ -126,12 +126,13 @@ Video processing is handled in the background. The upload endpoint returns immed
 
 All services run in isolated Docker containers connected via a private network, ensuring reproducibility and clean separation of concerns.
 
+---
+
 ### Setup and Installation
 #### Prerequisites
 - Docker
 
 ---
-
 
 ### Author
 Ayush Bhattacharjee
