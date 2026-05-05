@@ -1,0 +1,10 @@
+fastapi==0.136.1
+uvicorn[standard]==0.29.0
+python-multipart==0.0.18
+av==12.0.0
+mediapipe==0.10.14
+Pillow==10.3.0
+sqlalchemy==2.0.30
+asyncpg==0.29.0
+
+python-dotenv==1.0.1
