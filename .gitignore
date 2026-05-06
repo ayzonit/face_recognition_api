@@ -5,5 +5,5 @@ myenv/
 __pycache__/
 *.pyc
 
-
-
+outputs/
+uploads/
