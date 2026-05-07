@@ -71,7 +71,7 @@ async def stream_video(job_id: uuid.UUID):
     
     output_path = os.path.join(OUTPUT_DIR, f"{job_id}.mp4")
     if not os.path.exists(output_path):
-        raise HTTPException(status_code=404, detail="File not found")
+        raise HTTPException(status_code=404, detail="File not found.")
     
     def iter_file():
         with open(output_path, "rb") as f:
@@ -79,3 +79,27 @@ async def stream_video(job_id: uuid.UUID):
                 yield chunk
                 
     return StreamingResponse(iter_file(), media_type="video/mp4")
+
+
+@app.get("/roi/{job_id}", response_model=list[RoiResponse], status_code=200)
+async def get_roi(job_id: uuid.UUID, frame: int = None, db: AsyncSession = Depends(get_db)):
+    status = job_status.get(str(job_id))
+    
+    if status is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if status == "processing":
+        raise HTTPException(status_code=202, detail="Video is still processing.")
+    
+    query = select(RoiDetection).where(RoiDetection.job_id == job_id)
+    
+    if frame is not None:
+        query = query.where(RoiDetection.frame_index == frame)
+        
+    query = query.order_by(RoiDetection.frame_index)
+    result = await db.execute(query)
+    records = result.scalars().all()
+    
+    if not records:
+        raise HTTPException(status_code=204, detail="No detections were found for this job")
+    
+    return records
