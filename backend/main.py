@@ -11,7 +11,7 @@ from processing import process_video
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
 OUTPUT_DIR = os.getenv("OUTPUT_DIR", "/app/uploads")
-MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", 100))
+MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", 200))
 
 job_status: dict[str, str] = {}
 
