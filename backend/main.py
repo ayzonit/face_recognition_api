@@ -56,3 +56,26 @@ async def upload_video(background_tasks: BackgroundTasks,
     background_tasks.add_task(run_processing, job_id, db)
     
     return UploadResponse(job_id=job_id, message="Processing video.", frame_count=0, faces_detected=0)
+
+
+@app.get("/stream/{job_id}", status_code=200)
+async def stream_video(job_id: uuid.UUID):
+    status = job_status.get(str(job_id))
+    
+    if status is None:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    if status == "processing":
+        raise HTTPException(status_code=202, detail="Video is getting processed.")
+    if status == "failed":
+        raise HTTPException(status_code=500, detail="Processing failed for this video.")
+    
+    output_path = os.path.join(OUTPUT_DIR, f"{job_id}.mp4")
+    if not os.path.exists(output_path):
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    def iter_file():
+        with open(output_path, "rb") as f:
+            while chunk := f.read(1024*1024):
+                yield chunk
+                
+    return StreamingResponse(iter_file(), media_type="video/mp4")
