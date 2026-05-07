@@ -1,0 +1,282 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Face Detection API</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #0f1117;
+            color: #e2e8f0;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        h1 {
+            font-size: 1.8rem;
+            margin-bottom: 2rem;
+            color: #4f8ef7;
+        }
+
+        .upload-section {
+            background: #1a1f2e;
+            border: 1px solid #2d3450;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            max-width: 600px;
+        }
+
+        .upload-section label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+
+        input[type="file"] {
+            width: 100%;
+            padding: 0.5rem;
+            margin-bottom: 1rem;
+            background: #0f1117;
+            border: 1px solid #2d3450;
+            border-radius: 4px;
+            color: #e2e8f0;
+        }
+
+        button {
+            background: #4f8ef7;
+            color: white;
+            border: none;
+            padding: 0.6rem 1.5rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95rem;
+        }
+
+        button:hover { background: #3a7ae0; }
+        button:disabled { background: #2d3450; cursor: not-allowed; }
+
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #94a3b8;
+        }
+
+        .status.error { color: #f75f5f; }
+        .status.success { color: #3ddc84; }
+
+        .video-section {
+            margin-bottom: 2rem;
+            display: none;
+        }
+
+        .video-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #a259ff;
+        }
+
+        video {
+            width: 100%;
+            max-width: 720px;
+            border-radius: 8px;
+            border: 1px solid #2d3450;
+            background: #000;
+        }
+
+        .roi-section {
+            display: none;
+        }
+
+        .roi-section h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            color: #a259ff;
+        }
+
+        table {
+            width: 100%;
+            max-width: 720px;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        thead tr {
+            background: #4f8ef7;
+            color: white;
+        }
+
+        th, td {
+            padding: 0.6rem 0.8rem;
+            text-align: left;
+            border-bottom: 1px solid #2d3450;
+        }
+
+        tbody tr:nth-child(even) { background: #1a1f2e; }
+        tbody tr:nth-child(odd)  { background: #0f1117; }
+    </style>
+</head>
+<body>
+
+    <h1>Face Detection API</h1>
+
+    <!-- Upload Section -->
+    <div class="upload-section">
+        <label>Select a video file (max 500MB)</label>
+        <input type="file" id="videoFile" accept="video/*">
+        <button id="uploadBtn" onclick="uploadVideo()">Upload & Process</button>
+        <div class="status" id="status"></div>
+    </div>
+
+    <!-- Video Section -->
+    <div class="video-section" id="videoSection">
+        <h2>Annotated Output</h2>
+        <video id="videoPlayer" controls></video>
+    </div>
+
+    <!-- ROI Table Section -->
+    <div class="roi-section" id="roiSection">
+        <h2>ROI Data</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Frame</th>
+                    <th>X</th>
+                    <th>Y</th>
+                    <th>Width</th>
+                    <th>Height</th>
+                    <th>Confidence</th>
+                    <th>Timestamp (s)</th>
+                </tr>
+            </thead>
+            <tbody id="roiTableBody"></tbody>
+        </table>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let pollInterval = null;
+
+        async function uploadVideo() {
+            const fileInput = document.getElementById("videoFile");
+            const statusEl = document.getElementById("status");
+            const uploadBtn = document.getElementById("uploadBtn");
+
+            if (!fileInput.files.length) {
+                statusEl.textContent = "Please select a video file.";
+                statusEl.className = "status error";
+                return;
+            }
+
+            const file = fileInput.files[0];
+            const formData = new FormData();
+            formData.append("file", file);
+
+            uploadBtn.disabled = true;
+            statusEl.textContent = "Uploading...";
+            statusEl.className = "status";
+
+            try {
+                const res = await fetch("/api/upload", {
+                    method: "POST",
+                    body: formData,
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.detail || "Upload failed.");
+                }
+
+                const data = await res.json();
+                currentJobId = data.job_id;
+
+                statusEl.textContent = "Please wait, the video is getting processed..";
+                statusEl.className = "status";
+
+                pollInterval = setInterval(pollStatus, 3000);
+
+            } catch (err) {
+                statusEl.textContent = err.message;
+                statusEl.className = "status error";
+                uploadBtn.disabled = false;
+            }
+        }
+
+        async function pollStatus() {
+            try {
+                const res = await fetch(`/api/stream/${currentJobId}`);
+
+                if (res.status === 202) return;
+
+                if (res.status === 200) {
+                    clearInterval(pollInterval);
+                    loadVideo();
+                    loadRoi();
+                }
+
+                if (res.status === 500) {
+                    clearInterval(pollInterval);
+                    document.getElementById("status").textContent = "Processing failed.";
+                    document.getElementById("status").className = "status error";
+                    document.getElementById("uploadBtn").disabled = false;
+                }
+
+            } catch (err) {
+                clearInterval(pollInterval);
+                document.getElementById("status").textContent = "Polling error: " + err.message;
+                document.getElementById("status").className = "status error";
+            }
+        }
+
+        function loadVideo() {
+            const statusEl = document.getElementById("status");
+            const videoSection = document.getElementById("videoSection");
+            const videoPlayer = document.getElementById("videoPlayer");
+
+            videoPlayer.src = `/api/stream/${currentJobId}`;
+            videoSection.style.display = "block";
+
+            statusEl.textContent = "Processing complete.";
+            statusEl.className = "status success";
+            document.getElementById("uploadBtn").disabled = false;
+        }
+
+        async function loadRoi() {
+            try {
+                const res = await fetch(`/api/roi/${currentJobId}`);
+                if (!res.ok) return;
+
+                const records = await res.json();
+                const tbody = document.getElementById("roiTableBody");
+                tbody.innerHTML = "";
+
+                records.forEach(r => {
+                    const tr = document.createElement("tr");
+                    tr.innerHTML = `
+                        <td>${r.frame_index}</td>
+                        <td>${r.x.toFixed(4)}</td>
+                        <td>${r.y.toFixed(4)}</td>
+                        <td>${r.width.toFixed(4)}</td>
+                        <td>${r.height.toFixed(4)}</td>
+                        <td>${r.confidence ? r.confidence.toFixed(2) : "N/A"}</td>
+                        <td>${r.timestamp ? r.timestamp.toFixed(3) : "N/A"}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                document.getElementById("roiSection").style.display = "block";
+
+            } catch (err) {
+                console.error("Failed to load ROI data:", err);
+            }
+        }
+    </script>
+
+</body>
+</html>
