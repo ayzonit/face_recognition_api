@@ -37,7 +37,7 @@ async def run_processing(job_id: uuid.UUID, db: AsyncSession):
         raise e
     
     
-@app.post("/upload", response_model=UploadResponse, status_code=202)
+@app.post("/api/upload", response_model=UploadResponse, status_code=202)
 async def upload_video(background_tasks: BackgroundTasks, 
                        file: UploadFile = File(), db: AsyncSession = Depends(get_db)):
     
@@ -58,7 +58,7 @@ async def upload_video(background_tasks: BackgroundTasks,
     return UploadResponse(job_id=job_id, message="Processing video.", frame_count=0, faces_detected=0)
 
 
-@app.get("/stream/{job_id}", status_code=200)
+@app.get("/api/stream/{job_id}", status_code=200)
 async def stream_video(job_id: uuid.UUID):
     status = job_status.get(str(job_id))
     
@@ -81,7 +81,7 @@ async def stream_video(job_id: uuid.UUID):
     return StreamingResponse(iter_file(), media_type="video/mp4")
 
 
-@app.get("/roi/{job_id}", response_model=list[RoiResponse], status_code=200)
+@app.get("/api/roi/{job_id}", response_model=list[RoiResponse], status_code=200)
 async def get_roi(job_id: uuid.UUID, frame: int = None, db: AsyncSession = Depends(get_db)):
     status = job_status.get(str(job_id))
     
