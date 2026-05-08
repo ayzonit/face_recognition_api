@@ -43,27 +43,29 @@ async def process_video(job_id: uuid.UUID, db: AsyncSession):
                 height = video_stream.height
                 for frame in inp.decode(video=0):
                     rgb = frame.to_ndarray(format="rgb24")
-                    ts = float(frame.pts * video_stream.time_base)
+                    ts = float(frame.pts * video_stream.time_base) if frame.pts is not None else 0.0
                     results = detector.process(rgb)
                     if results.detections:
-                        d = results.detections[0]
-                        bb = d.location_data.relative_bounding_box
-                        x = clamp(bb.xmin)
-                        y = clamp(bb.ymin)
-                        w = clamp(bb.width)
-                        h = clamp(bb.height)
-                        conf = float(d.score[0])
-                        roi_records.append(RoiDetection(job_id=job_id, 
-                                                       frame_index=frame_count, 
-                                                       x=x, 
-                                                       y=y,
-                                                       width=w, 
-                                                       height=h,
-                                                       confidence = conf,
-                                                       timestamp = ts,
-                                                       ))
-                        annotated = draw_roi(rgb, x, y, w, h)
-                        faces_detected += 1
+                        for d in results.detections:
+                            bb = d.location_data.relative_bounding_box
+                            x = clamp(bb.xmin)
+                            y = clamp(bb.ymin)
+                            w = clamp(bb.width)
+                            h = clamp(bb.height)
+                            conf = float(d.score[0])
+                            roi_records.append
+                            (RoiDetection(job_id=job_id, 
+                                        frame_index=frame_count, 
+                                        x=x, 
+                                        y=y,
+                                        width=w, 
+                                        height=h,
+                                        confidence = conf,
+                                        timestamp = ts,
+                                        )
+                            )
+                            annotated = draw_roi(rgb, x, y, w, h)
+                            faces_detected += 1
                     else:
                         annotated = rgb
                         
