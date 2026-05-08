@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from contextlib import asynccontextmanager
-from database import init_db, get_db, async_session_maker
+from database import init_db, get_db, AsyncSessionLocal
 from models import RoiDetection, RoiResponse, UploadResponse, JobStatusResponse
 from processing import process_video
 from typing import Optional
@@ -32,7 +32,7 @@ app = FastAPI(title="Face Detection API", version="1.0", lifespan=lifespan)
 async def run_processing(job_id: uuid.UUID):
     try:
         job_status[str(job_id)] = "processing"
-        async with async_session_maker() as db:
+        async with AsyncSessionLocal() as db:
             await process_video(job_id, db)
         job_status[str(job_id)] = "done"
         
@@ -42,8 +42,7 @@ async def run_processing(job_id: uuid.UUID):
     
     
 @app.post("/api/upload", response_model=UploadResponse, status_code=202)
-async def upload_video(background_tasks: BackgroundTasks, 
-                       file: UploadFile = File(), db: AsyncSession = Depends(get_db)):
+async def upload_video(background_tasks: BackgroundTasks, file: UploadFile = File()):
     
     if not file.content_type or not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Please upload a video.")
