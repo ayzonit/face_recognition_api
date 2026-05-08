@@ -5,12 +5,13 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from contextlib import asynccontextmanager
-from database import init_db, get_db
+from database import init_db, get_db, async_session_maker
 from models import RoiDetection, RoiResponse, UploadResponse, JobStatusResponse
 from processing import process_video
+from typing import Optional
 
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "/app/uploads")
-OUTPUT_DIR = os.getenv("OUTPUT_DIR", "/app/uploads")
+OUTPUT_DIR = os.getenv("OUTPUT_DIR", "/app/outputs")
 MAX_UPLOAD_SIZE = int(os.getenv("MAX_UPLOAD_SIZE_MB", 200))
 
 job_status: dict[str, str] = {}
@@ -26,34 +27,37 @@ async def lifespan(app: FastAPI):
     
 app = FastAPI(title="Face Detection API", version="1.0", lifespan=lifespan)
 
-async def run_processing(job_id: uuid.UUID, db: AsyncSession):
+
+
+async def run_processing(job_id: uuid.UUID):
     try:
         job_status[str(job_id)] = "processing"
-        await process_video(job_id, db)
+        async with async_session_maker() as db:
+            await process_video(job_id, db)
         job_status[str(job_id)] = "done"
         
     except Exception as e:
-        job_status[str(job_id, db)] = "failed"
-        raise e
+        job_status[str(job_id)] = "failed"
+        raise
     
     
 @app.post("/api/upload", response_model=UploadResponse, status_code=202)
 async def upload_video(background_tasks: BackgroundTasks, 
                        file: UploadFile = File(), db: AsyncSession = Depends(get_db)):
     
-    if not file.content_type.startswith("video/"):
+    if not file.content_type or not file.content_type.startswith("video/"):
         raise HTTPException(status_code=400, detail="Please upload a video.")
     contents = await file.read()
     if len(contents) > MAX_UPLOAD_SIZE * 1024 * 1024:
         raise HTTPException(status_code=400, detail=f"Please upload a file under {MAX_UPLOAD_SIZE}MB")
     
-    job_id: uuid.UUID
+    job_id = uuid.uuid4()
     input_path = os.path.join(UPLOAD_DIR, f"{job_id}.mp4")
     
     with open(input_path, "wb") as f:
         f.write(contents)
         
-    background_tasks.add_task(run_processing, job_id, db)
+    background_tasks.add_task(run_processing, job_id)
     
     return UploadResponse(job_id=job_id, message="Processing video.", frame_count=0, faces_detected=0)
 
@@ -82,7 +86,7 @@ async def stream_video(job_id: uuid.UUID):
 
 
 @app.get("/api/roi/{job_id}", response_model=list[RoiResponse], status_code=200)
-async def get_roi(job_id: uuid.UUID, frame: int = None, db: AsyncSession = Depends(get_db)):
+async def get_roi(job_id: uuid.UUID, frame: Optional[int] = None, db: AsyncSession = Depends(get_db)):
     status = job_status.get(str(job_id))
     
     if status is None:
@@ -100,6 +104,6 @@ async def get_roi(job_id: uuid.UUID, frame: int = None, db: AsyncSession = Depen
     records = result.scalars().all()
     
     if not records:
-        raise HTTPException(status_code=204, detail="No detections were found for this job")
+        raise HTTPException(status_code=404, detail="No detections were found for this job")
     
     return records
