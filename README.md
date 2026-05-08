@@ -20,7 +20,7 @@ The system is designed to:
 
 ## Architecture
 
-<img width="1536" height="1024" alt="face_detection_image" src="https://github.com/user-attachments/assets/035a96a4-44b8-4526-98f2-4bc5c5f1ae5f" />
+<img width="1536" height="1024" alt="face_roi_readme_architechture" src="https://github.com/user-attachments/assets/763b9108-e4a9-4896-a3d5-d612b05a1553" />
 
 ---
 
