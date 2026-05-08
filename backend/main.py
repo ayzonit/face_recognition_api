@@ -25,7 +25,9 @@ async def lifespan(app: FastAPI):
     yield
     
     
-app = FastAPI(title="Face Detection API", version="1.0.0", lifespan=lifespan, root_path="/")
+app = FastAPI(title="Face Detection API", 
+              version="1.0.0", lifespan=lifespan, 
+              root_path="/", openapi_url="/openapi.json",)
 
 
 
