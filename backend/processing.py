@@ -38,7 +38,15 @@ async def process_video(job_id: uuid.UUID, db: AsyncSession):
             frames = []
             with av.open(input_path) as inp:
                 video_stream = inp.streams.video[0]
-                fps = float(video_stream.average_rate)
+                rate = video_stream.average_rate
+                try:
+                    fps = float(rate) if rate else 30.0
+                except Exception:
+                    fps = 30.0
+                    
+                if fps <= 0 or fps > 60:
+                    fps = 30.0
+                    
                 width = video_stream.width
                 height = video_stream.height
                 for frame in inp.decode(video=0):
